@@ -17,7 +17,7 @@ import tempfile
 
 OPENSSL_CNF="""
 [ req ]
-default_bits        = 2048
+default_bits        = 4096
 default_md        = sha256
 distinguished_name    = req_distinguished_name
 prompt = no
