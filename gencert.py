@@ -6,12 +6,8 @@
 # When more than one hostname is provided, a SAN (Subject Alternate Name)
 # certificate and request are generated.  The first hostname is used as the
 # primary CN for the request.
-#
-# Author: James E. Blair <jeblair@berkeley.edu>  2010-06-18
-# With help from this thread:
-# http://www.mail-archive.com/openssl-users@openssl.org/msg47641.html
 
-import os,sys
+import os,sys,stat
 import subprocess
 import tempfile
 
@@ -28,7 +24,6 @@ C=US
 ST=California
 L=Berkeley
 O=University of California at Berkeley
-OU=IST
 %(cn)s
 
 [ v3_req ]
@@ -70,10 +65,10 @@ def run(args):
 if __name__=="__main__":
     names = sys.argv[1:]
     if not names:
-        print "Usage: gencert hostname [hostname...]"
+        print("Usage: gencert hostname [hostname...]")
         print 
-        print "  Please provide at least one hostname on the command line."
-        print "  Multiple hostnames may be provided to generate a SAN request."
+        print("  Please provide at least one hostname on the command line.")
+        print("  Multiple hostnames may be provided to generate a SAN request.")
         print
         sys.exit(1)
     params = dict(req='', dn='', alt='')
@@ -97,20 +92,20 @@ if __name__=="__main__":
     os.close(fh)
 
     if os.path.exists(crtfile):
-        print "Certificate file exists, aborting"
-        print "  ", crtfile
+        print("Certificate file exists, aborting")
+        print("  ", crtfile)
         sys.exit(1)
 
     if os.path.exists(csrfile):
-        print "Certificate request file exists, aborting"
-        print "  ", csrfile
+        print("Certificate request file exists, aborting")
+        print("  ", csrfile)
         sys.exit(1)
 
     if os.path.exists(keyfile):
-        print "Key file exists, skipping key generation"
+        print("Key file exists, skipping key generation")
     else:
         run(['openssl', 'genrsa', '-out', keyfile, '2048'])
-        os.chmod(keyfile, 0400)
+        os.chmod(keyfile, stat.S_IREAD )
     run(['openssl', 'req', '-config', cnffile, '-new', '-nodes', '-key', keyfile, '-out', csrfile])
     run(['openssl', 'req', '-config', cnffile, '-new', '-nodes', '-key', keyfile, '-out', crtfile, '-x509'])
     run(['openssl', 'req', '-in', csrfile, '-text'])
