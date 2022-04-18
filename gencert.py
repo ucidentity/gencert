@@ -56,7 +56,7 @@ def run(args):
     while True:
         o = p.stdout.read(1)
         if not o: break
-        sys.stdout.write(o)
+        sys.stdout.write(o.decode())
         sys.stdout.flush()
     r = p.wait()
     if r:
@@ -88,7 +88,7 @@ if __name__=="__main__":
     csrfile = '/etc/pki/tls/certs/%s%s.csr' % (names[0], sanfn)
     (fh, cnffile) = tempfile.mkstemp()
 
-    os.write(fh, OPENSSL_CNF%params)
+    os.write(fh, str.encode(OPENSSL_CNF%params))
     os.close(fh)
 
     if os.path.exists(crtfile):
