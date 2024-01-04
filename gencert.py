@@ -10,6 +10,15 @@
 import os,sys,stat
 import subprocess
 import tempfile
+import argparse
+import re
+
+parser = argparse.ArgumentParser(
+                    prog='gencert',
+                    description='Generate a key, self-signed certificate, and certificate request.',usage="\n./gencert.py names\n./gencert.py -p ~/mycerts names")
+parser.add_argument('names',nargs="+",help="Provide at least one hostname on the command line. Multiple space delimited hostnames may be provided to generate a SAN request.")
+parser.add_argument('-p', '--path', required=False, help="Optional. Override Linux default output paths for generated files.")
+args = parser.parse_args()
 
 OPENSSL_CNF="""
 [ req ]
@@ -23,7 +32,7 @@ prompt = no
 C=US
 ST=California
 L=Berkeley
-O=University of California at Berkeley
+O=University of California, Berkeley
 %(cn)s
 
 [ v3_req ]
@@ -63,29 +72,33 @@ def run(args):
         raise Exception('Error running %s'%args)
 
 if __name__=="__main__":
-    names = sys.argv[1:]
-    if not names:
-        print("Usage: gencert hostname [hostname...]")
-        print 
-        print("  Please provide at least one hostname on the command line.")
-        print("  Multiple hostnames may be provided to generate a SAN request.")
-        print
-        sys.exit(1)
+    if len(args.names) == 1:
+        names = re.findall(r'[\w+\.]+\w+', args.names[0])
+    else:
+        names = args.names
+
+    if args.path:
+        key_path = args.path
+        crt_path = args.path
+    else:
+        key_path = '/etc/pki/tls/private'
+        crt_path = '/etc/pki/tls/certs'
+
     params = dict(req='', dn='', alt='')
     if len(names)>1:
         # SAN
         san_names = ""
         for i,x in enumerate(names):
-            san_names += "DNS.%s = %s\n" % (i,x)
+            san_names += f"DNS.{i} = {x}\n"
         params['req']=SAN_REQ
         params['alt']=san_names
         sanfn = '-san'
     else:
         sanfn = ''
     params['cn']='CN=%s'%names[0]
-    keyfile = '/etc/pki/tls/private/%s%s.key' % (names[0], sanfn)
-    crtfile = '/etc/pki/tls/certs/%s%s.cert' % (names[0], sanfn)
-    csrfile = '/etc/pki/tls/certs/%s%s.csr' % (names[0], sanfn)
+    keyfile = f"{key_path}/{names[0]}{sanfn}.key"
+    crtfile = f"{crt_path}/{names[0]}{sanfn}.cert"
+    csrfile = f"{crt_path}/{names[0]}{sanfn}.csr"
     (fh, cnffile) = tempfile.mkstemp()
 
     os.write(fh, str.encode(OPENSSL_CNF%params))
@@ -104,7 +117,7 @@ if __name__=="__main__":
     if os.path.exists(keyfile):
         print("Key file exists, skipping key generation")
     else:
-        run(['openssl', 'genrsa', '-out', keyfile, '2048'])
+        run(['openssl', 'genrsa', '-out', keyfile, '4096'])
         os.chmod(keyfile, stat.S_IREAD )
     run(['openssl', 'req', '-config', cnffile, '-new', '-nodes', '-key', keyfile, '-out', csrfile])
     run(['openssl', 'req', '-config', cnffile, '-new', '-nodes', '-key', keyfile, '-out', crtfile, '-x509'])
