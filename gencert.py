@@ -73,7 +73,7 @@ def run(args):
 
 if __name__=="__main__":
     if len(args.names) == 1:
-        names = re.findall(r'[\w+\.]+\w+', args.names[0])
+        names = [item for item in re.split(r'[ ,]+', args.names[0].strip()) if item]
     else:
         names = args.names
 
